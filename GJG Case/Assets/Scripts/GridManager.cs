@@ -54,7 +54,6 @@ public class GridManager : MonoBehaviour
         return new Vector2(xPosition, yPosition);
     }
 
-
     public void CheckAndDestroyBlocks(Block startBlock)
     {
         List<Block> connectedBlocks = GetConnectedBlocks(startBlock);
@@ -68,8 +67,8 @@ public class GridManager : MonoBehaviour
                 Destroy(block.gameObject); // Bloklarý yok et
             }
 
-            // Bloklarý yok ettikten sonra aþaðýya kaydýr
-            StartCoroutine(DropBlocksWithAnimation());
+            // Bloklarý yok ettikten sonra aþaðýya kaydýr ve yukarýdan doldur
+            StartCoroutine(UpdateGrid());
         }
         else
         {
@@ -121,6 +120,12 @@ public class GridManager : MonoBehaviour
         return connectedBlocks;
     }
 
+    private IEnumerator UpdateGrid()
+    {
+        yield return StartCoroutine(DropBlocksWithAnimation());
+        RefillGrid();
+    }
+
     private IEnumerator DropBlocksWithAnimation()
     {
         for (int column = 0; column < columns; column++)
@@ -147,6 +152,37 @@ public class GridManager : MonoBehaviour
                         }
                     }
                 }
+            }
+        }
+    }
+
+    private void RefillGrid()
+    {
+        for (int column = 0; column < columns; column++)
+        {
+            int emptySpaces = 0;
+
+            for (int row = rows - 1; row >= 0; row--)
+            {
+                if (gridArray[row, column] == null)
+                {
+                    emptySpaces++;
+                }
+            }
+
+            for (int i = 0; i < emptySpaces; i++)
+            {
+                int newRow = emptySpaces - 1 - i;
+                GameObject newBlock = Instantiate(blockPrefabs[Random.Range(0, blockPrefabs.Length)],
+                                                  GetWorldPosition(newRow - emptySpaces, column),
+                                                  Quaternion.identity);
+
+                newBlock.GetComponent<Block>().row = newRow;
+                newBlock.GetComponent<Block>().column = column;
+                gridArray[newRow, column] = newBlock;
+
+                Vector3 targetPosition = GetWorldPosition(newRow, column);
+                StartCoroutine(MoveBlock(newBlock, targetPosition, 0.1f));
             }
         }
     }
