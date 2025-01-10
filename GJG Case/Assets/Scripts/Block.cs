@@ -15,6 +15,10 @@ public class Block : MonoBehaviour
         int count = GridManager.Instance.GetConnectedBlocks(this).Count;
         if (this.tag == "Blue")
         {
+            if (count <5)
+            {
+                this.GetComponent<SpriteRenderer>().sprite = sprite[18];
+            }
             if (count>=5 && count<=7)
             {
                 this.GetComponent<SpriteRenderer>().sprite = sprite[0];
@@ -30,6 +34,10 @@ public class Block : MonoBehaviour
         }
         if (this.tag == "Green")
         {
+            if (count < 5)
+            {
+                this.GetComponent<SpriteRenderer>().sprite = sprite[19];
+            }
             if (count >= 5 && count <= 7)
             {
                 this.GetComponent<SpriteRenderer>().sprite = sprite[3];
@@ -45,6 +53,10 @@ public class Block : MonoBehaviour
         }
         if (this.tag == "Pink")
         {
+            if (count < 5)
+            {
+                this.GetComponent<SpriteRenderer>().sprite = sprite[20];
+            }
             if (count >= 5 && count <= 7)
             {
                 this.GetComponent<SpriteRenderer>().sprite = sprite[6];
@@ -60,6 +72,10 @@ public class Block : MonoBehaviour
         }
         if (this.tag == "Purple")
         {
+            if (count < 5)
+            {
+                this.GetComponent<SpriteRenderer>().sprite = sprite[21];
+            }
             if (count >= 5 && count <= 7)
             {
                 this.GetComponent<SpriteRenderer>().sprite = sprite[9];
@@ -75,6 +91,10 @@ public class Block : MonoBehaviour
         }
         if (this.tag == "Red")
         {
+            if (count < 5)
+            {
+                this.GetComponent<SpriteRenderer>().sprite = sprite[22];
+            }
             if (count >= 5 && count <= 7)
             {
                 this.GetComponent<SpriteRenderer>().sprite = sprite[12];
@@ -90,6 +110,10 @@ public class Block : MonoBehaviour
         }
         if (this.tag == "Yellow")
         {
+            if (count < 5)
+            {
+                this.GetComponent<SpriteRenderer>().sprite = sprite[23];
+            }
             if (count >= 5 && count <= 7)
             {
                 this.GetComponent<SpriteRenderer>().sprite = sprite[15];
