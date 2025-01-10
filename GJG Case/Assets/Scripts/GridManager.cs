@@ -76,7 +76,7 @@ public class GridManager : MonoBehaviour
         }
     }
 
-    private List<Block> GetConnectedBlocks(Block startBlock)
+    public List<Block> GetConnectedBlocks(Block startBlock)
     {
         List<Block> connectedBlocks = new List<Block>();
         Queue<Block> toCheck = new Queue<Block>();
