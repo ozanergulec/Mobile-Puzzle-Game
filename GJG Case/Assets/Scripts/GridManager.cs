@@ -12,6 +12,7 @@ public class GridManager : MonoBehaviour
     public float spacing = 0.1f;
     public GameObject[] blockPrefabs;
     public GameObject[,] gridArray;
+    public GameObject explosionEffectPrefab;
 
     private void Awake()
     {
@@ -62,6 +63,8 @@ public class GridManager : MonoBehaviour
         {
             foreach (Block block in connectedBlocks)
             {
+                Vector2 blockPosition = block.transform.position;
+                Instantiate(explosionEffectPrefab, blockPosition, Quaternion.identity);
                 Vector2Int gridPosition = new Vector2Int(block.row, block.column);
                 gridArray[gridPosition.x, gridPosition.y] = null; // Grid'den kaldýr
                 Destroy(block.gameObject); // Bloklarý yok et
