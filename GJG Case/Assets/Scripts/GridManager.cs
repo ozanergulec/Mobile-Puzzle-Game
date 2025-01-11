@@ -1,4 +1,4 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -66,16 +66,15 @@ public class GridManager : MonoBehaviour
                 Vector2 blockPosition = block.transform.position;
                 Instantiate(explosionEffectPrefab, blockPosition, Quaternion.identity);
                 Vector2Int gridPosition = new Vector2Int(block.row, block.column);
-                gridArray[gridPosition.x, gridPosition.y] = null; // Grid'den kaldýr
-                Destroy(block.gameObject); // Bloklarý yok et
+                gridArray[gridPosition.x, gridPosition.y] = null; 
+                Destroy(block.gameObject); 
             }
 
-            // Bloklarý yok ettikten sonra aþaðýya kaydýr ve yukarýdan doldur
             StartCoroutine(UpdateGrid());
         }
         else
         {
-            Debug.Log("Yeterli baðlantý yok: " + connectedBlocks.Count);
+            Debug.Log("Yeterli baÄŸlantÄ± yok: " + connectedBlocks.Count);
         }
     }
 
@@ -135,28 +134,47 @@ public class GridManager : MonoBehaviour
         {
             for (int row = rows - 1; row > 0; row--)
             {
-                if (gridArray[row, column] == null) // Eðer bu hücre boþsa
+                if (gridArray[row, column] == null) 
                 {
                     for (int checkRow = row - 1; checkRow >= 0; checkRow--)
                     {
-                        if (gridArray[checkRow, column] != null) // Eðer üstte blok varsa
+                        if (gridArray[checkRow, column] != null) 
                         {
                             GameObject block = gridArray[checkRow, column];
-                            gridArray[checkRow, column] = null; // Eski yerini boþalt
-                            gridArray[row, column] = block; // Yeni yerine yerleþtir
+                            gridArray[checkRow, column] = null; 
+                            gridArray[row, column] = block; 
 
                             Block blockComponent = block.GetComponent<Block>();
                             blockComponent.row = row;
                             blockComponent.column = column;
 
-                            // Blok pozisyonunu animasyonla hareket ettir
+                            
                             yield return StartCoroutine(MoveBlock(block, GetWorldPosition(row, column), 0.1f));
-                            break; // Daha fazla blok arama
+                            break; 
                         }
                     }
                 }
             }
         }
+    }
+    //Gridde patlatÄ±labilir blok var mÄ± kontrol et
+    private bool HasMatchableBlocks()
+    {
+        for (int row = 0; row < rows; row++)
+        {
+            for (int col = 0; col < columns; col++)
+            {
+                if (gridArray[row, col] != null)
+                {
+                    List<Block> connected = GetConnectedBlocks(gridArray[row, col].GetComponent<Block>());
+                    if (connected.Count >= 2)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private void RefillGrid()
@@ -164,7 +182,6 @@ public class GridManager : MonoBehaviour
         for (int column = 0; column < columns; column++)
         {
             int emptySpaces = 0;
-
             for (int row = rows - 1; row >= 0; row--)
             {
                 if (gridArray[row, column] == null)
@@ -176,9 +193,20 @@ public class GridManager : MonoBehaviour
             for (int i = 0; i < emptySpaces; i++)
             {
                 int newRow = emptySpaces - 1 - i;
-                GameObject newBlock = Instantiate(blockPrefabs[Random.Range(0, blockPrefabs.Length)],
-                                                  GetWorldPosition(newRow - emptySpaces, column),
-                                                  Quaternion.identity);
+                GameObject newBlock;
+
+                // EÄŸer grid'de hiÃ§ patlatÄ±labilir blok yoksa 
+                if (i == emptySpaces - 1 && column == columns - 1 && !HasMatchableBlocks())
+                {
+                    newBlock = CreateSuitableBlock(newRow, column);
+                }
+                else
+                {
+                    // Normal rastgele spawn
+                    newBlock = Instantiate(blockPrefabs[Random.Range(0, blockPrefabs.Length)],
+                                        GetWorldPosition(newRow, column),
+                                        Quaternion.identity);
+                }
 
                 newBlock.GetComponent<Block>().row = newRow;
                 newBlock.GetComponent<Block>().column = column;
@@ -187,6 +215,62 @@ public class GridManager : MonoBehaviour
                 Vector3 targetPosition = GetWorldPosition(newRow, column);
                 StartCoroutine(MoveBlock(newBlock, targetPosition, 0.1f));
             }
+        }
+    }
+    //Deadlock olmamasÄ± iÃ§in uygun blok oluÅŸtur
+    private GameObject CreateSuitableBlock(int row, int column)
+    {
+        List<GameObject> validPrefabs = new List<GameObject>();
+        List<GameObject> allValidPrefabs = new List<GameObject>();
+
+        
+        foreach (GameObject prefab in blockPrefabs)
+        {
+            GameObject tempBlock = Instantiate(prefab, Vector3.one * 1000, Quaternion.identity);
+            Block tempBlockComponent = tempBlock.GetComponent<Block>();
+            tempBlockComponent.row = row;
+            tempBlockComponent.column = column;
+
+            gridArray[row, column] = tempBlock;
+
+            // Bu blokla eÅŸleÅŸme var mÄ± kontrol et
+            List<Block> connected = GetConnectedBlocks(tempBlockComponent);
+
+            gridArray[row, column] = null;
+            Destroy(tempBlock);
+
+            // 2-3 eÅŸleÅŸme yapan bloklarÄ± Ã¶ncelikli listeye al
+            if (connected.Count >= 2 && connected.Count <= 3)
+            {
+                validPrefabs.Add(prefab);
+            }
+            // TÃ¼m geÃ§erli prefablarÄ± da ayrÄ± bir listede tut
+            if (connected.Count >= 2)
+            {
+                allValidPrefabs.Add(prefab);
+            }
+        }
+
+        // Ã–nce 2-3 eÅŸleÅŸmeli prefablarÄ± dene
+        if (validPrefabs.Count > 0)
+        {
+            return Instantiate(validPrefabs[Random.Range(0, validPrefabs.Count)],
+                             GetWorldPosition(row, column),
+                             Quaternion.identity);
+        }
+        // Yoksa tÃ¼m geÃ§erli prefablarÄ± dene
+        else if (allValidPrefabs.Count > 0)
+        {
+            return Instantiate(allValidPrefabs[Random.Range(0, allValidPrefabs.Count)],
+                             GetWorldPosition(row, column),
+                             Quaternion.identity);
+        }
+        // HiÃ§ uygun prefab bulunamazsa rastgele seÃ§
+        else
+        {
+            return Instantiate(blockPrefabs[Random.Range(0, blockPrefabs.Length)],
+                             GetWorldPosition(row, column),
+                             Quaternion.identity);
         }
     }
 
