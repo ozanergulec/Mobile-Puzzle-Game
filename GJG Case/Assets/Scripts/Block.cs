@@ -7,6 +7,12 @@ public class Block : MonoBehaviour
     public Sprite[] sprite;
     private void OnMouseDown()
     {
+        if (GridManager.Instance.isProcessing)
+        {
+            Debug.Log("Ýþlem devam ediyor, lütfen bekleyin");
+            return;
+        }
+
         Debug.Log($"Týklanan Blok: {name}, Pozisyon: ({row}, {column})");
         GridManager.Instance.CheckAndDestroyBlocks(this);
     }

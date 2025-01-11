@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class GridManager : MonoBehaviour
@@ -13,7 +14,7 @@ public class GridManager : MonoBehaviour
     public GameObject[] blockPrefabs;
     public GameObject[,] gridArray;
     public GameObject explosionEffectPrefab;
-
+    public bool isProcessing = false;
     private void Awake()
     {
         if (Instance == null)
@@ -57,17 +58,21 @@ public class GridManager : MonoBehaviour
 
     public void CheckAndDestroyBlocks(Block startBlock)
     {
+        if (isProcessing) return; // İşlem devam ediyorsa yeni tıklamayı engelle
+
         List<Block> connectedBlocks = GetConnectedBlocks(startBlock);
 
         if (connectedBlocks.Count >= 2)
         {
+            isProcessing = true; // İşlemi başlat
+
             foreach (Block block in connectedBlocks)
             {
                 Vector2 blockPosition = block.transform.position;
                 Instantiate(explosionEffectPrefab, blockPosition, Quaternion.identity);
                 Vector2Int gridPosition = new Vector2Int(block.row, block.column);
-                gridArray[gridPosition.x, gridPosition.y] = null; 
-                Destroy(block.gameObject); 
+                gridArray[gridPosition.x, gridPosition.y] = null;
+                Destroy(block.gameObject);
             }
 
             StartCoroutine(UpdateGrid());
@@ -126,6 +131,8 @@ public class GridManager : MonoBehaviour
     {
         yield return StartCoroutine(DropBlocksWithAnimation());
         RefillGrid();
+        yield return new WaitForSeconds(0.2f); 
+        isProcessing = false; 
     }
 
     private IEnumerator DropBlocksWithAnimation()
@@ -179,99 +186,121 @@ public class GridManager : MonoBehaviour
 
     private void RefillGrid()
     {
+        List<Vector2Int> emptyPositions = new List<Vector2Int>();
+
         for (int column = 0; column < columns; column++)
         {
-            int emptySpaces = 0;
             for (int row = rows - 1; row >= 0; row--)
             {
                 if (gridArray[row, column] == null)
                 {
-                    emptySpaces++;
+                    emptyPositions.Add(new Vector2Int(row, column));
                 }
-            }
-
-            for (int i = 0; i < emptySpaces; i++)
-            {
-                int newRow = emptySpaces - 1 - i;
-                GameObject newBlock;
-
-                // Eğer grid'de hiç patlatılabilir blok yoksa 
-                if (i == emptySpaces - 1 && column == columns - 1 && !HasMatchableBlocks())
-                {
-                    newBlock = CreateSuitableBlock(newRow, column);
-                }
-                else
-                {
-                    // Normal rastgele spawn
-                    newBlock = Instantiate(blockPrefabs[Random.Range(0, blockPrefabs.Length)],
-                                        GetWorldPosition(newRow, column),
-                                        Quaternion.identity);
-                }
-
-                newBlock.GetComponent<Block>().row = newRow;
-                newBlock.GetComponent<Block>().column = column;
-                gridArray[newRow, column] = newBlock;
-
-                Vector3 targetPosition = GetWorldPosition(newRow, column);
-                StartCoroutine(MoveBlock(newBlock, targetPosition, 0.1f));
             }
         }
+
+        
+        foreach (Vector2Int pos in emptyPositions.OrderBy(p => p.x))
+        {
+            GameObject newBlock;
+
+            // Son boşluklar doldurulurken ekstra kontrol yap
+            if (pos == emptyPositions[emptyPositions.Count - 1])
+            {
+                // Geçici olarak rastgele bir blok koy ve test et
+                newBlock = Instantiate(blockPrefabs[Random.Range(0, blockPrefabs.Length)],
+                                    GetWorldPosition(pos.x, pos.y),
+                                    Quaternion.identity);
+
+                newBlock.GetComponent<Block>().row = pos.x;
+                newBlock.GetComponent<Block>().column = pos.y;
+                gridArray[pos.x, pos.y] = newBlock;
+
+                // Eğer tüm grid dolduktan sonra hiç eşleşme yoksa
+                if (!HasMatchableBlocks())
+                {
+                    // Mevcut bloğu yok et
+                    Destroy(newBlock);
+                    // Akıllı bir blok oluştur
+                    newBlock = CreateSuitableBlock(pos.x, pos.y);
+                }
+            }
+            else
+            {
+                newBlock = Instantiate(blockPrefabs[Random.Range(0, blockPrefabs.Length)],
+                                    GetWorldPosition(pos.x, pos.y),
+                                    Quaternion.identity);
+            }
+
+            newBlock.GetComponent<Block>().row = pos.x;
+            newBlock.GetComponent<Block>().column = pos.y;
+            gridArray[pos.x, pos.y] = newBlock;
+
+            Vector3 targetPosition = GetWorldPosition(pos.x, pos.y);
+            StartCoroutine(MoveBlock(newBlock, targetPosition, 0.1f));
+        }
     }
-    //Deadlock olmaması için uygun blok oluştur
+
     private GameObject CreateSuitableBlock(int row, int column)
     {
         List<GameObject> validPrefabs = new List<GameObject>();
-        List<GameObject> allValidPrefabs = new List<GameObject>();
 
-        
         foreach (GameObject prefab in blockPrefabs)
         {
             GameObject tempBlock = Instantiate(prefab, Vector3.one * 1000, Quaternion.identity);
             Block tempBlockComponent = tempBlock.GetComponent<Block>();
             tempBlockComponent.row = row;
             tempBlockComponent.column = column;
-
             gridArray[row, column] = tempBlock;
 
-            // Bu blokla eşleşme var mı kontrol et
-            List<Block> connected = GetConnectedBlocks(tempBlockComponent);
-
-            gridArray[row, column] = null;
-            Destroy(tempBlock);
-
-            // 2-3 eşleşme yapan blokları öncelikli listeye al
-            if (connected.Count >= 2 && connected.Count <= 3)
+            if (HasMatchableBlocksForPosition(row, column))
             {
                 validPrefabs.Add(prefab);
             }
-            // Tüm geçerli prefabları da ayrı bir listede tut
-            if (connected.Count >= 2)
-            {
-                allValidPrefabs.Add(prefab);
-            }
+
+            gridArray[row, column] = null;
+            Destroy(tempBlock);
         }
 
-        // Önce 2-3 eşleşmeli prefabları dene
         if (validPrefabs.Count > 0)
         {
             return Instantiate(validPrefabs[Random.Range(0, validPrefabs.Count)],
                              GetWorldPosition(row, column),
                              Quaternion.identity);
         }
-        // Yoksa tüm geçerli prefabları dene
-        else if (allValidPrefabs.Count > 0)
+        return Instantiate(blockPrefabs[Random.Range(0, blockPrefabs.Length)],
+                         GetWorldPosition(row, column),
+                         Quaternion.identity);
+    }
+
+    // Çevredeki bloklarla eşleşme kontrol et
+    private bool HasMatchableBlocksForPosition(int row, int column)
+    {
+        
+        Vector2Int[] directions = new Vector2Int[]
         {
-            return Instantiate(allValidPrefabs[Random.Range(0, allValidPrefabs.Count)],
-                             GetWorldPosition(row, column),
-                             Quaternion.identity);
-        }
-        // Hiç uygun prefab bulunamazsa rastgele seç
-        else
+            new Vector2Int(0, 1), new Vector2Int(1, 0),
+            new Vector2Int(0, -1), new Vector2Int(-1, 0)
+        };
+
+        foreach (Vector2Int dir in directions)
         {
-            return Instantiate(blockPrefabs[Random.Range(0, blockPrefabs.Length)],
-                             GetWorldPosition(row, column),
-                             Quaternion.identity);
+            int newRow = row + dir.x;
+            int newCol = column + dir.y;
+
+            if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < columns)
+            {
+                if (gridArray[newRow, newCol] != null)
+                {
+                    List<Block> connected = GetConnectedBlocks(gridArray[newRow, newCol].GetComponent<Block>());
+                    if (connected.Count >= 2)
+                    {
+                        return true;
+                    }
+                }
+            }
         }
+        return false;
     }
 
     private IEnumerator MoveBlock(GameObject block, Vector2 targetPosition, float duration)
