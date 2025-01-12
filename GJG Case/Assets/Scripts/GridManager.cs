@@ -31,14 +31,36 @@ public class GridManager : MonoBehaviour
 
     private void InitializeGrid()
     {
+        do
+        {
+            ClearGrid();
+
+            for (int row = 0; row < rows; row++)
+            {
+                for (int column = 0; column < columns; column++)
+                {
+                    SpawnBlock(row, column);
+                }
+            }
+        }
+        while (!HasMatchableBlocks()); 
+    }
+
+    private void ClearGrid()
+    {
         for (int row = 0; row < rows; row++)
         {
             for (int column = 0; column < columns; column++)
             {
-                SpawnBlock(row, column);
+                if (gridArray[row, column] != null)
+                {
+                    Destroy(gridArray[row, column]);
+                    gridArray[row, column] = null;
+                }
             }
         }
     }
+
 
     private void SpawnBlock(int row, int column)
     {
