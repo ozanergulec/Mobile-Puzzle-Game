@@ -80,13 +80,13 @@ public class GridManager : MonoBehaviour
 
     public void CheckAndDestroyBlocks(Block startBlock)
     {
-        if (isProcessing) return; // İşlem devam ediyorsa yeni tıklamayı engelle
+        if (isProcessing) return; 
 
         List<Block> connectedBlocks = GetConnectedBlocks(startBlock);
 
         if (connectedBlocks.Count >= 2)
         {
-            isProcessing = true; // İşlemi başlat
+            isProcessing = true; 
 
             foreach (Block block in connectedBlocks)
             {
@@ -225,11 +225,9 @@ public class GridManager : MonoBehaviour
         foreach (Vector2Int pos in emptyPositions.OrderBy(p => p.x))
         {
             GameObject newBlock;
-
-            // Son boşluklar doldurulurken ekstra kontrol yap
             if (pos == emptyPositions[emptyPositions.Count - 1])
             {
-                // Geçici olarak rastgele bir blok koy ve test et
+
                 newBlock = Instantiate(blockPrefabs[Random.Range(0, blockPrefabs.Length)],
                                     GetWorldPosition(pos.x, pos.y),
                                     Quaternion.identity);
@@ -238,12 +236,9 @@ public class GridManager : MonoBehaviour
                 newBlock.GetComponent<Block>().column = pos.y;
                 gridArray[pos.x, pos.y] = newBlock;
 
-                // Eğer tüm grid dolduktan sonra hiç eşleşme yoksa
                 if (!HasMatchableBlocks())
                 {
-                    // Mevcut bloğu yok et
                     Destroy(newBlock);
-                    // Akıllı bir blok oluştur
                     newBlock = CreateSuitableBlock(pos.x, pos.y);
                 }
             }
